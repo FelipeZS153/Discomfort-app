@@ -330,6 +330,9 @@
   let speechEnabled = false;
   let micReady = false;
 
+  const LISTEN_START_DELAY_MS = 500; // delay after prompt before listening starts 0.5 sec
+  const LISTEN_WINDOW_MS = 10000;      // how long user has to speak 10 sec
+
   // Build 0-10 buttons
   for (let i = 0; i <= 10; i++) {
     const btn = document.createElement('button');
@@ -562,13 +565,22 @@
   }
 
   function startListening() {
-    if (!speechEnabled || !recognition) return;
-    try {
-      recognition.start();
-    } catch (e) {
-      setStatus(voiceStatusEl, `Could not start speech recognition: <strong>${escapeHtml(e.message || String(e))}</strong>. Use tap input if needed.`, 'warn');
-    }
+  if (!speechEnabled || !recognition) return;
+
+  try {
+    recognition.start();
+
+    // Keep the response window open for 5 seconds
+    setTimeout(() => {
+      if (awaitingResponse) {
+        try { recognition.stop(); } catch (e) {}
+      }
+    }, LISTEN_WINDOW_MS);
+
+  } catch (e) {
+    setStatus(voiceStatusEl, `Could not start speech recognition: <strong>${escapeHtml(e.message || String(e))}</strong>. Use tap input if needed.`, 'warn');
   }
+}
 
   function askDiscomfort() {
     if (!running) return;
@@ -585,7 +597,7 @@
     // Start listening shortly after the spoken prompt begins
     setTimeout(() => {
       if (running && awaitingResponse) startListening();
-    }, 700);
+    }, LISTEN_START_DELAY_MS);
   }
 
   function startSession() {
