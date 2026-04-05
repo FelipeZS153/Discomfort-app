@@ -643,71 +643,174 @@
     }
   }
 
-  function exportCSV() {
-    if (!records.length) {
-      setStatus(statusEl, 'There are no records to export yet.', 'warn');
-      return;
-    }
+	  async function exportCSV() {
+	  if (!records.length) {
+		setStatus(statusEl, 'There are no records to export yet.', 'warn');
+		return;
+	  }
 
-    const headers = [
-      'row',
-      'prompt_index',
-      'elapsed_sec',
-      'clock_time',
-      'value',
-      'source',
-      'transcript',
-      'participant_id',
-      'session_label'
-    ];
+	  const headers = [
+		'row',
+		'prompt_index',
+		'elapsed_sec',
+		'clock_time',
+		'value',
+		'source',
+		'transcript',
+		'participant_id',
+		'session_label'
+	  ];
 
-    const lines = [headers.join(',')];
-    records.forEach((r, idx) => {
-      const vals = [
-        idx + 1,
-        r.promptIndex,
-        r.elapsedSec,
-        r.clockTime,
-        r.value,
-        r.source,
-        r.transcript,
-        r.participantId,
-        r.sessionLabel
-      ].map(csvCell);
-      lines.push(vals.join(','));
-    });
+	  const lines = [headers.join(',')];
+	  records.forEach((r, idx) => {
+		const vals = [
+		  idx + 1,
+		  r.promptIndex,
+		  r.elapsedSec,
+		  r.clockTime,
+		  r.value,
+		  r.source,
+		  r.transcript,
+		  r.participantId,
+		  r.sessionLabel
+		].map(csvCell);
+		lines.push(vals.join(','));
+	  });
 
-    const csv = lines.join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
+	  const csv = lines.join('\n');
 
-    const pid = participantIdEl.value.trim() || 'participant';
-    const sess = sessionLabelEl.value.trim() || 'session';
-    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
-  	// iPad-friendly export (opens share dialog)
-  	const file = new File([csv], `${pid}_${sess}_discomfort_${stamp}.csv`, {
-  	  type: 'text/csv'
-  	});
-  
-  	if (navigator.share) {
-  	  navigator.share({
-  		files: [file],
-  		title: 'Discomfort Data',
-  	  }).catch(() => {});
-  	} else {
-  	  // fallback (desktop)
-  	  const a = document.createElement('a');
-  	  a.href = url;
-  	  a.download = file.name;
-  	  document.body.appendChild(a);
-  	  a.click();
-  	  a.remove();
-  	}
-  
-  	URL.revokeObjectURL(url);
+	  const pid = participantIdEl.value.trim() || 'participant';
+	  const sess = sessionLabelEl.value.trim() || 'session';
+	  const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+	  const filename = `${pid}_${sess}_discomfort_${stamp}.csv`;
 
-    setStatus(statusEl, 'CSV exported.', 'good');
-  }
+	  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+	  const file = new File([blob], filename, { type: 'text/csv' });
+
+	  // 1) Best option on supported mobile browsers: native share sheet
+	  try {
+		if (navigator.canShare && navigator.canShare({ files: [file] }) && navigator.share) {
+		  await navigator.share({
+			title: 'Discomfort CSV',
+			files: [file]
+		  });
+		  setStatus(statusEl, 'CSV shared successfully.', 'good');
+		  return;
+		}
+	  } catch (err) {
+		console.log('Share failed:', err);
+	  }
+
+	  // 2) Desktop/browser fallback: regular download link
+	  try {
+		const url = URL.createObjectURL(blob);
+		const a = document.createElement('a');
+		a.href = url;
+		a.download = filename;
+		document.body.appendChild(a);
+		a.click();
+		a.remove();
+
+		setTimeout(() => URL.revokeObjectURL(url), 1500);
+		setStatus(statusEl, 'Tried browser download. If no file appeared, use the manual CSV fallback below.', 'warn');
+		
+		// give browser a moment; if download UI does nothing, user still has fallback
+		showCSVFallback(csv, filename);
+		return;
+	  } catch (err) {
+		console.log('Download fallback failed:', err);
+	  }
+
+	  // 3) Guaranteed fallback: show CSV on screen for copy/save
+	  showCSVFallback(csv, filename);
+	  setStatus(statusEl, 'Automatic export was not supported. CSV opened on screen for manual copy/save.', 'warn');
+	}
+	
+	function csvCell(value) {
+		const s = String(value ?? '');
+		if (s.includes('"') || s.includes(',') || s.includes('\n')) {
+		return '"' + s.replace(/"/g, '""') + '"';
+	}
+	return s;
+	}
+
+	function showCSVFallback(csv, filename) {
+	  let existing = document.getElementById('csvFallbackWrap');
+	  if (existing) existing.remove();
+
+	  const wrap = document.createElement('div');
+	  wrap.id = 'csvFallbackWrap';
+	  wrap.style.position = 'fixed';
+	  wrap.style.inset = '0';
+	  wrap.style.background = 'rgba(0,0,0,0.65)';
+	  wrap.style.zIndex = '99999';
+	  wrap.style.display = 'flex';
+	  wrap.style.alignItems = 'center';
+	  wrap.style.justifyContent = 'center';
+	  wrap.style.padding = '16px';
+
+	  const box = document.createElement('div');
+	  box.style.background = '#fff';
+	  box.style.width = '100%';
+	  box.style.maxWidth = '900px';
+	  box.style.maxHeight = '90vh';
+	  box.style.borderRadius = '16px';
+	  box.style.padding = '16px';
+	  box.style.display = 'flex';
+	  box.style.flexDirection = 'column';
+	  box.style.gap = '12px';
+
+	  const title = document.createElement('div');
+	  title.innerHTML = `<strong>Manual CSV fallback</strong><br><span style="font-size:14px;color:#666;">${filename}</span>`;
+
+	  const buttons = document.createElement('div');
+	  buttons.style.display = 'flex';
+	  buttons.style.gap = '8px';
+	  buttons.style.flexWrap = 'wrap';
+
+	  const copyBtn = document.createElement('button');
+	  copyBtn.textContent = 'Copy CSV';
+	  copyBtn.style.padding = '10px 14px';
+	  copyBtn.onclick = async () => {
+		try {
+		  await navigator.clipboard.writeText(csv);
+		  alert('CSV copied to clipboard.');
+		} catch (e) {
+		  textarea.focus();
+		  textarea.select();
+		  alert('Clipboard copy was blocked. The CSV is selected—use Copy manually.');
+		}
+	  };
+
+	  const closeBtn = document.createElement('button');
+	  closeBtn.textContent = 'Close';
+	  closeBtn.style.padding = '10px 14px';
+	  closeBtn.onclick = () => wrap.remove();
+
+	  buttons.appendChild(copyBtn);
+	  buttons.appendChild(closeBtn);
+
+	  const instructions = document.createElement('div');
+	  instructions.style.fontSize = '14px';
+	  instructions.style.color = '#555';
+	  instructions.innerHTML = 'If export does not save automatically on iPad, tap <strong>Copy CSV</strong>, then paste it into Notes, Files, Google Drive, or email.';
+
+	  const textarea = document.createElement('textarea');
+	  textarea.value = csv;
+	  textarea.style.width = '100%';
+	  textarea.style.height = '60vh';
+	  textarea.style.fontFamily = 'monospace';
+	  textarea.style.fontSize = '12px';
+	  textarea.style.whiteSpace = 'pre';
+	  textarea.style.padding = '12px';
+
+	  box.appendChild(title);
+	  box.appendChild(buttons);
+	  box.appendChild(instructions);
+	  box.appendChild(textarea);
+	  wrap.appendChild(box);
+	  document.body.appendChild(wrap);
+	}
 
   function clearTable() {
     records = [];
