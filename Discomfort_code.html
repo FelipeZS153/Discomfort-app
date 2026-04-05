@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>Discomfort Recorder</title>
+  <style>
+    :root {
+      --bg: #f7f7f7;
+      --card: #ffffff;
+      --text: #111111;
+      --muted: #666666;
+      --accent: #1f6feb;
+      --border: #d9d9d9;
+      --good: #0a7f2e;
+      --warn: #b35c00;
+      --bad: #b00020;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      padding: 16px;
+    }
+    .wrap {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 18px;
+      margin-bottom: 16px;
+      box-shadow: 0 2px 10px rgba(0,0,0,.05);
+    }
+    h1, h2, h3 {
+      margin: 0 0 12px 0;
+    }
+    .topline {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .big {
+      font-size: clamp(28px, 7vw, 58px);
+      font-weight: 800;
+      text-align: center;
+      margin: 18px 0 8px 0;
+    }
+    .sub {
+      text-align: center;
+      color: var(--muted);
+      font-size: 18px;
+      margin-bottom: 12px;
+    }
+    .controls, .small-controls {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    button, input, select {
+      font: inherit;
+    }
+    button {
+      border: 1px solid var(--border);
+      background: white;
+      color: var(--text);
+      border-radius: 14px;
+      padding: 12px 16px;
+      cursor: pointer;
+      min-height: 48px;
+    }
+    button.primary {
+      background: var(--accent);
+      color: white;
+      border-color: var(--accent);
+      font-weight: 700;
+    }
+    button.warn {
+      background: #fff7ed;
+      color: #8a4600;
+      border-color: #f1c27d;
+    }
+    button.stop {
+      background: #fff1f2;
+      color: #9f1239;
+      border-color: #f5b4c3;
+    }
+    button.score {
+      min-width: 72px;
+      min-height: 72px;
+      font-size: 28px;
+      font-weight: 700;
+      border-radius: 18px;
+    }
+    .score-grid {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 12px;
+    }
+    @media (max-width: 700px) {
+      .score-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+    }
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+    @media (max-width: 760px) {
+      .row {
+        grid-template-columns: 1fr;
+      }
+    }
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .field label {
+      font-weight: 600;
+    }
+    .field input {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px 12px;
+      background: white;
+    }
+    .status {
+      padding: 12px 14px;
+      border-radius: 14px;
+      background: #f3f4f6;
+      border: 1px solid var(--border);
+      line-height: 1.45;
+    }
+    .status.good { background: #ecfdf3; color: var(--good); border-color: #b7e4c7; }
+    .status.warn { background: #fff7ed; color: var(--warn); border-color: #f1c27d; }
+    .status.bad  { background: #fff1f2; color: var(--bad);  border-color: #f3b0be; }
+    .meta {
+      display: flex;
+      gap: 18px;
+      flex-wrap: wrap;
+      color: var(--muted);
+      font-size: 15px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+    th, td {
+      border-bottom: 1px solid var(--border);
+      padding: 10px 8px;
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      background: #fafafa;
+      position: sticky;
+      top: 0;
+    }
+    .table-wrap {
+      max-height: 320px;
+      overflow: auto;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+    }
+    .mono {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+    .hint {
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    .pill {
+      display: inline-block;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: #fafafa;
+      font-size: 13px;
+      margin-right: 8px;
+      margin-bottom: 8px;
+    }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <div class="topline">
+      <h1>Discomfort Recorder</h1>
+      <div class="meta">
+        <div><strong>Prompt:</strong> spoken “Discomfort?”</div>
+        <div><strong>Response:</strong> voice or tap</div>
+        <div><strong>Export:</strong> CSV</div>
+      </div>
+    </div>
+
+    <div class="row" style="margin-top: 14px;">
+      <div class="field">
+        <label for="participantId">Participant ID</label>
+        <input id="participantId" placeholder="e.g., P01" />
+      </div>
+      <div class="field">
+        <label for="intervalSec">Prompt interval (seconds)</label>
+        <input id="intervalSec" type="number" min="5" value="30" />
+      </div>
+    </div>
+
+    <div class="row" style="margin-top: 10px;">
+      <div class="field">
+        <label for="sessionLabel">Session / Condition</label>
+        <input id="sessionLabel" placeholder="e.g., VRB_DVS" />
+      </div>
+      <div class="field">
+        <label for="maxTrials">Optional number of prompts</label>
+        <input id="maxTrials" type="number" min="1" placeholder="leave blank for unlimited" />
+      </div>
+    </div>
+
+    <div style="margin-top: 14px;" class="controls">
+      <button id="startBtn" class="primary">Start session</button>
+      <button id="nextBtn">Ask now</button>
+      <button id="stopBtn" class="stop">Stop session</button>
+      <button id="exportBtn" class="warn">Export CSV</button>
+      <button id="clearBtn">Clear table</button>
+    </div>
+
+    <div style="margin-top: 14px;" id="status" class="status warn">
+      Tap <strong>Start session</strong>. The app will speak <strong>“Discomfort?”</strong> at the selected interval, attempt voice capture if available, and always allow manual tap entry.
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="big" id="promptText">Ready</div>
+    <div class="sub" id="subText">Waiting to start</div>
+
+    <div class="meta" style="justify-content:center; margin-bottom: 14px;">
+      <div><strong>Elapsed:</strong> <span id="elapsed">00:00</span></div>
+      <div><strong>Next prompt:</strong> <span id="countdown">--</span></div>
+      <div><strong>Prompt #:</strong> <span id="trialNum">0</span></div>
+    </div>
+
+    <div class="score-grid" id="scoreGrid"></div>
+
+    <div style="margin-top: 16px;" class="row">
+      <div class="status" id="voiceStatus">
+        Voice recognition status will appear here.
+      </div>
+      <div class="status" id="heardStatus">
+        Last heard transcript: <span class="mono" id="heardText">none</span>
+      </div>
+    </div>
+
+    <div style="margin-top: 12px;" class="hint">
+      Spoken numbers recognized: 0–10, including words such as “zero”, “one”, “two”, … “ten”.
+      If speech recognition is unavailable on your iPad/browser, tap the number manually.
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Recorded Responses</h2>
+    <div style="margin-bottom: 10px;">
+      <span class="pill">Source: voice</span>
+      <span class="pill">Source: tap</span>
+      <span class="pill">One row per accepted response</span>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Elapsed (s)</th>
+            <th>Clock time</th>
+            <th>Value</th>
+            <th>Source</th>
+            <th>Transcript</th>
+            <th>Participant</th>
+            <th>Session</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const participantIdEl = document.getElementById('participantId');
+  const intervalSecEl = document.getElementById('intervalSec');
+  const sessionLabelEl = document.getElementById('sessionLabel');
+  const maxTrialsEl = document.getElementById('maxTrials');
+
+  const startBtn = document.getElementById('startBtn');
+  const nextBtn = document.getElementById('nextBtn');
+  const stopBtn = document.getElementById('stopBtn');
+  const exportBtn = document.getElementById('exportBtn');
+  const clearBtn = document.getElementById('clearBtn');
+
+  const statusEl = document.getElementById('status');
+  const voiceStatusEl = document.getElementById('voiceStatus');
+  const heardStatusEl = document.getElementById('heardStatus');
+  const heardTextEl = document.getElementById('heardText');
+
+  const promptTextEl = document.getElementById('promptText');
+  const subTextEl = document.getElementById('subText');
+  const elapsedEl = document.getElementById('elapsed');
+  const countdownEl = document.getElementById('countdown');
+  const trialNumEl = document.getElementById('trialNum');
+  const tbody = document.getElementById('tbody');
+  const scoreGrid = document.getElementById('scoreGrid');
+
+  let records = [];
+  let running = false;
+  let sessionStartMs = null;
+  let nextPromptAtMs = null;
+  let timerLoop = null;
+  let promptCount = 0;
+  let awaitingResponse = false;
+  let lastPromptIndex = 0;
+  let recognition = null;
+  let speechEnabled = false;
+  let micReady = false;
+
+  // Build 0-10 buttons
+  for (let i = 0; i <= 10; i++) {
+    const btn = document.createElement('button');
+    btn.className = 'score';
+    btn.textContent = i;
+    btn.addEventListener('click', () => saveResponse(i, 'tap', `tap:${i}`));
+    scoreGrid.appendChild(btn);
+  }
+
+  function setStatus(el, text, cls = '') {
+    el.className = 'status' + (cls ? ' ' + cls : '');
+    el.innerHTML = text;
+  }
+
+  function fmtClock(d) {
+    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  }
+
+  function fmtElapsed(seconds) {
+    const m = Math.floor(seconds / 60);
+    const s = Math.floor(seconds % 60);
+    return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  }
+
+  function elapsedSecondsNow() {
+    if (!sessionStartMs) return 0;
+    return (Date.now() - sessionStartMs) / 1000;
+  }
+
+  function speakPrompt() {
+    const text = "Discomfort?";
+    promptTextEl.textContent = "Discomfort?";
+    subTextEl.textContent = "Please say a number from 0 to 10, or tap the screen";
+    try {
+      window.speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = 'en-US';
+      u.rate = 0.95;
+      u.pitch = 1.0;
+      window.speechSynthesis.speak(u);
+    } catch (e) {
+      // silently continue
+    }
+  }
+
+  function updateMainTimer() {
+    if (!running) return;
+    const elapsed = elapsedSecondsNow();
+    elapsedEl.textContent = fmtElapsed(elapsed);
+
+    if (nextPromptAtMs) {
+      const diff = Math.max(0, Math.ceil((nextPromptAtMs - Date.now()) / 1000));
+      countdownEl.textContent = `${diff}s`;
+      if (Date.now() >= nextPromptAtMs) {
+        askDiscomfort();
+      }
+    } else {
+      countdownEl.textContent = '--';
+    }
+  }
+
+  function parseValue(text) {
+    if (!text) return null;
+    const raw = text.trim().toLowerCase();
+    const normalized = raw
+      .replace(/-/g, ' ')
+      .replace(/[^\w\s]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    const map = {
+      '0': 0, 'zero': 0,
+      '1': 1, 'one': 1, 'won': 1,
+      '2': 2, 'two': 2, 'to': 2, 'too': 2,
+      '3': 3, 'three': 3,
+      '4': 4, 'four': 4, 'for': 4,
+      '5': 5, 'five': 5,
+      '6': 6, 'six': 6,
+      '7': 7, 'seven': 7,
+      '8': 8, 'eight': 8, 'ate': 8,
+      '9': 9, 'nine': 9,
+      '10': 10, 'ten': 10
+    };
+
+    if (map.hasOwnProperty(normalized)) return map[normalized];
+
+    // Try to find a usable token within a longer phrase, e.g. "my discomfort is three"
+    const tokens = normalized.split(' ');
+    for (const t of tokens) {
+      if (map.hasOwnProperty(t)) return map[t];
+    }
+
+    // Numeric fallback
+    const num = parseInt(normalized, 10);
+    if (!Number.isNaN(num) && num >= 0 && num <= 10) return num;
+
+    return null;
+  }
+
+  function saveResponse(value, source, transcript = '') {
+    if (!running) return;
+    if (!awaitingResponse) {
+      // Still allow manual logging even outside the response window
+      // but mark it clearly as extra.
+    }
+
+    const now = new Date();
+    const row = {
+      promptIndex: lastPromptIndex,
+      elapsedSec: elapsedSecondsNow().toFixed(1),
+      clockTime: fmtClock(now),
+      value,
+      source,
+      transcript,
+      participantId: participantIdEl.value.trim(),
+      sessionLabel: sessionLabelEl.value.trim()
+    };
+
+    records.push(row);
+    renderTable();
+
+    promptTextEl.textContent = `Recorded: ${value}`;
+    subTextEl.textContent = `Saved from ${source}`;
+    heardTextEl.textContent = transcript || 'none';
+    setStatus(heardStatusEl, `Last heard transcript: <span class="mono">${escapeHtml(transcript || 'none')}</span>`, 'good');
+    setStatus(statusEl, `Saved value <strong>${value}</strong> from <strong>${source}</strong>.`, 'good');
+
+    awaitingResponse = false;
+
+    const maxTrials = parseInt(maxTrialsEl.value, 10);
+    if (!Number.isNaN(maxTrials) && promptCount >= maxTrials) {
+      stopSession();
+      setStatus(statusEl, `Session stopped after reaching <strong>${maxTrials}</strong> prompts.`, 'good');
+    }
+  }
+
+  function renderTable() {
+    tbody.innerHTML = '';
+    records.forEach((r, idx) => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${idx + 1}</td>
+        <td>${escapeHtml(String(r.elapsedSec))}</td>
+        <td>${escapeHtml(r.clockTime)}</td>
+        <td>${escapeHtml(String(r.value))}</td>
+        <td>${escapeHtml(r.source)}</td>
+        <td>${escapeHtml(r.transcript)}</td>
+        <td>${escapeHtml(r.participantId)}</td>
+        <td>${escapeHtml(r.sessionLabel)}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  function escapeHtml(s) {
+    return String(s)
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#039;');
+  }
+
+  async function prepareMic() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+      micReady = true;
+      // We only need permission; stop tracks immediately.
+      stream.getTracks().forEach(t => t.stop());
+      setStatus(statusEl, 'Microphone permission granted.', 'good');
+      return true;
+    } catch (err) {
+      micReady = false;
+      setStatus(statusEl, `Microphone permission failed: <strong>${escapeHtml(err.message || String(err))}</strong>. You can still use manual tap entry.`, 'warn');
+      return false;
+    }
+  }
+
+  function setupRecognition() {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) {
+      speechEnabled = false;
+      setStatus(voiceStatusEl, 'Speech recognition is not available in this browser. Use the tap buttons.', 'warn');
+      return;
+    }
+
+    recognition = new SR();
+    recognition.lang = 'en-US';
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+    speechEnabled = true;
+    setStatus(voiceStatusEl, 'Speech recognition is available. The app will listen after each prompt.', 'good');
+
+    recognition.onstart = () => {
+      setStatus(voiceStatusEl, 'Listening for spoken discomfort value...', 'good');
+    };
+
+    recognition.onresult = (event) => {
+      const transcript = event.results?.[0]?.[0]?.transcript || '';
+      heardTextEl.textContent = transcript || 'none';
+      const value = parseValue(transcript);
+
+      if (value === null) {
+        setStatus(
+          voiceStatusEl,
+          `Heard: <span class="mono">${escapeHtml(transcript)}</span> — no valid 0–10 value detected. Please tap manually if needed.`,
+          'warn'
+        );
+      } else {
+        setStatus(
+          voiceStatusEl,
+          `Heard: <span class="mono">${escapeHtml(transcript)}</span> → parsed as <strong>${value}</strong>.`,
+          'good'
+        );
+        saveResponse(value, 'voice', transcript);
+      }
+    };
+
+    recognition.onerror = (event) => {
+      const msg = event.error || 'unknown error';
+      setStatus(voiceStatusEl, `Speech recognition error: <strong>${escapeHtml(msg)}</strong>. You can still tap manually.`, 'warn');
+    };
+
+    recognition.onend = () => {
+      if (awaitingResponse) {
+        setStatus(voiceStatusEl, 'Voice capture ended. Waiting for manual tap or next prompt.', 'warn');
+      }
+    };
+  }
+
+  function startListening() {
+    if (!speechEnabled || !recognition) return;
+    try {
+      recognition.start();
+    } catch (e) {
+      setStatus(voiceStatusEl, `Could not start speech recognition: <strong>${escapeHtml(e.message || String(e))}</strong>. Use tap input if needed.`, 'warn');
+    }
+  }
+
+  function askDiscomfort() {
+    if (!running) return;
+
+    promptCount += 1;
+    lastPromptIndex = promptCount;
+    trialNumEl.textContent = String(promptCount);
+    awaitingResponse = true;
+
+    speakPrompt();
+    setStatus(statusEl, `Prompt <strong>#${promptCount}</strong> issued. Waiting for response.`, 'good');
+    nextPromptAtMs = Date.now() + (Number(intervalSecEl.value) || 30) * 1000;
+
+    // Start listening shortly after the spoken prompt begins
+    setTimeout(() => {
+      if (running && awaitingResponse) startListening();
+    }, 700);
+  }
+
+  function startSession() {
+    if (running) return;
+
+    const interval = Number(intervalSecEl.value);
+    if (!interval || interval < 5) {
+      setStatus(statusEl, 'Please enter a prompt interval of at least 5 seconds.', 'bad');
+      return;
+    }
+
+    running = true;
+    sessionStartMs = Date.now();
+    nextPromptAtMs = null;
+    promptCount = 0;
+    trialNumEl.textContent = '0';
+    promptTextEl.textContent = 'Session started';
+    subTextEl.textContent = 'First prompt will happen now';
+    elapsedEl.textContent = '00:00';
+    awaitingResponse = false;
+
+    askDiscomfort();
+
+    if (timerLoop) clearInterval(timerLoop);
+    timerLoop = setInterval(updateMainTimer, 250);
+
+    setStatus(statusEl, 'Session is running.', 'good');
+  }
+
+  function stopSession() {
+    running = false;
+    awaitingResponse = false;
+    nextPromptAtMs = null;
+    countdownEl.textContent = '--';
+    promptTextEl.textContent = 'Stopped';
+    subTextEl.textContent = 'Session not running';
+    if (timerLoop) {
+      clearInterval(timerLoop);
+      timerLoop = null;
+    }
+    if (recognition) {
+      try { recognition.abort(); } catch (e) {}
+    }
+  }
+
+  function exportCSV() {
+    if (!records.length) {
+      setStatus(statusEl, 'There are no records to export yet.', 'warn');
+      return;
+    }
+
+    const headers = [
+      'row',
+      'prompt_index',
+      'elapsed_sec',
+      'clock_time',
+      'value',
+      'source',
+      'transcript',
+      'participant_id',
+      'session_label'
+    ];
+
+    const lines = [headers.join(',')];
+    records.forEach((r, idx) => {
+      const vals = [
+        idx + 1,
+        r.promptIndex,
+        r.elapsedSec,
+        r.clockTime,
+        r.value,
+        r.source,
+        r.transcript,
+        r.participantId,
+        r.sessionLabel
+      ].map(csvCell);
+      lines.push(vals.join(','));
+    });
+
+    const csv = lines.join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+
+    const pid = participantIdEl.value.trim() || 'participant';
+    const sess = sessionLabelEl.value.trim() || 'session';
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${pid}_${sess}_discomfort_${stamp}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+
+    setStatus(statusEl, 'CSV exported.', 'good');
+  }
+
+  function clearTable() {
+    records = [];
+    renderTable();
+    setStatus(statusEl, 'All records cleared from the table.', 'warn');
+  }
+
+  startBtn.addEventListener('click', async () => {
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setStatus(statusEl, 'Microphone access is not available in this browser. Tap entry still works.', 'warn');
+    } else {
+      await prepareMic();
+    }
+    setupRecognition();
+    startSession();
+  });
+
+  nextBtn.addEventListener('click', () => {
+    if (!running) {
+      setStatus(statusEl, 'Start the session first.', 'warn');
+      return;
+    }
+    askDiscomfort();
+  });
+
+  stopBtn.addEventListener('click', stopSession);
+  exportBtn.addEventListener('click', exportCSV);
+  clearBtn.addEventListener('click', clearTable);
+
+  setStatus(
+    voiceStatusEl,
+    'Not initialized yet. After you tap Start, the page will request microphone access and test browser speech recognition.',
+    'warn'
+  );
+})();
+</script>
+</body>
+</html>
