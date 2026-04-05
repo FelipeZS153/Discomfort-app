@@ -217,7 +217,7 @@
     <div class="row" style="margin-top: 10px;">
       <div class="field">
         <label for="sessionLabel">Session / Condition</label>
-        <input id="sessionLabel" placeholder="e.g., VRB_DVS" />
+        <input id="sessionLabel" placeholder="e.g., Control, HNR, or Foam" />
       </div>
       <div class="field">
         <label for="maxTrials">Optional number of prompts</label>
@@ -330,7 +330,7 @@
   let speechEnabled = false;
   let micReady = false;
 
-  const LISTEN_START_DELAY_MS = 500; // delay after prompt before listening starts 0.5 sec
+  const LISTEN_START_DELAY_MS = 1200; // delay after prompt before listening starts 0.5 sec
   const LISTEN_WINDOW_MS = 10000;      // how long user has to speak 10 sec
 
   // Build 0-10 buttons
