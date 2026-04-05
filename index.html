@@ -684,13 +684,27 @@
     const pid = participantIdEl.value.trim() || 'participant';
     const sess = sessionLabelEl.value.trim() || 'session';
     const stamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${pid}_${sess}_discomfort_${stamp}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
+  	// iPad-friendly export (opens share dialog)
+  	const file = new File([csv], `${pid}_${sess}_discomfort_${stamp}.csv`, {
+  	  type: 'text/csv'
+  	});
+  
+  	if (navigator.share) {
+  	  navigator.share({
+  		files: [file],
+  		title: 'Discomfort Data',
+  	  }).catch(() => {});
+  	} else {
+  	  // fallback (desktop)
+  	  const a = document.createElement('a');
+  	  a.href = url;
+  	  a.download = file.name;
+  	  document.body.appendChild(a);
+  	  a.click();
+  	  a.remove();
+  	}
+  
+  	URL.revokeObjectURL(url);
 
     setStatus(statusEl, 'CSV exported.', 'good');
   }
