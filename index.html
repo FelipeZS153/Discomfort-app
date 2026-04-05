@@ -604,22 +604,20 @@
     if (running) return;
 
     const interval = Number(intervalSecEl.value);
-    if (!interval || interval < 5) {
-      setStatus(statusEl, 'Please enter a prompt interval of at least 5 seconds.', 'bad');
+    if (!interval || interval < 10) {
+      setStatus(statusEl, 'Please enter a prompt interval of at least 10 seconds.', 'bad');
       return;
     }
 
     running = true;
     sessionStartMs = Date.now();
-    nextPromptAtMs = null;
+    nextPromptAtMs = Date.now() + (Number(intervalSecEl.value) || 30) * 1000;
     promptCount = 0;
     trialNumEl.textContent = '0';
     promptTextEl.textContent = 'Session started';
     subTextEl.textContent = 'First prompt will happen now';
     elapsedEl.textContent = '00:00';
     awaitingResponse = false;
-
-    askDiscomfort();
 
     if (timerLoop) clearInterval(timerLoop);
     timerLoop = setInterval(updateMainTimer, 250);
